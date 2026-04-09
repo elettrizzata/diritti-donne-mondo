@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diritti delle Donne nel Mondo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0d1117;color:#e6edf3;overflow:hidden}
+
+header{
+  background:#1a1a2e;padding:12px 20px;display:flex;
+  align-items:center;justify-content:space-between;
+  border-bottom:1px solid #30363d;height:60px;
+}
+header h1{font-size:18px;font-weight:600;color:#fff}
+header p{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+.hcontrols{display:flex;align-items:center;gap:10px}
+.vtoggle{
+  display:flex;align-items:center;gap:6px;font-size:12px;
+  color:rgba(255,255,255,.7);background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);border-radius:20px;
+  padding:5px 12px;cursor:pointer;transition:all .2s;user-select:none;
+}
+.vtoggle:hover{background:rgba(255,255,255,.15)}
+.vtoggle.on{background:rgba(99,179,237,.2);border-color:rgba(99,179,237,.5);color:#63b3ed}
+.vdot{width:8px;height:8px;border-radius:50%;background:#555;transition:background .2s}
+.vtoggle.on .vdot{background:#63b3ed;animation:pdot 1.5s infinite}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.4)}}
+
+#main{display:flex;height:calc(100vh - 60px)}
+
+/* MAP */
+#map-wrap{flex:1;position:relative;background:#0a1628;overflow:hidden;cursor:grab}
+#map-wrap:active{cursor:grabbing}
+#world-svg{width:100%;height:100%}
+
+.land{fill:#1e3a5f;stroke:#0a1628;stroke-width:.5;transition:fill .2s}
+.land.c1{fill:#c8960c;cursor:pointer}
+.land.c2{fill:#d4600a;cursor:pointer}
+.land.c3{fill:#b52b27;cursor:pointer}
+.land.c4{fill:#6b0000;cursor:pointer}
+.land.active:hover{opacity:.8;stroke:#fff;stroke-width:1}
+.land.selected{stroke:#63b3ed!important;stroke-width:2!important;opacity:1!important}
+.graticule{fill:none;stroke:#0f2233;stroke-width:.3}
+.sphere{fill:#071525}
+.border{fill:none;stroke:#0a1628;stroke-width:.5}
+
+/* ZOOM CONTROLS */
+.zoom-controls{
+  position:absolute;bottom:40px;right:12px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.zbtn{
+  width:30px;height:30px;background:rgba(22,27,34,.9);
+  border:1px solid #30363d;border-radius:6px;color:#8b949e;
+  font-size:16px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;
+}
+.zbtn:hover{background:#21262d;color:#e6edf3}
+
+/* TOOLTIP */
+#tip{
+  position:absolute;pointer-events:none;
+  background:rgba(13,17,23,.96);border:1px solid #30363d;
+  border-radius:8px;padding:9px 13px;font-size:12px;
+  color:#e6edf3;display:none;max-width:220px;z-index:10;
+}
+#tip-name{font-weight:600;font-size:14px;margin-bottom:3px}
+#tip-sev{font-size:11px;margin-bottom:2px}
+#tip-hint{font-size:10px;color:#555}
+
+/* SPEAKING */
+#speak-ind{
+  display:none;align-items:center;gap:6px;
+  font-size:11px;color:#63b3ed;padding:4px 10px;
+  background:rgba(99,179,237,.1);border-radius:15px;
+  border:1px solid rgba(99,179,237,.3);
+}
+.swave{display:flex;gap:2px;align-items:center}
+.swave span{width:3px;border-radius:2px;background:#63b3ed;animation:wave 1s ease-in-out infinite}
+.swave span:nth-child(1){height:5px;animation-delay:0s}
+.swave span:nth-child(2){height:11px;animation-delay:.1s}
+.swave span:nth-child(3){height:7px;animation-delay:.2s}
+.swave span:nth-child(4){height:13px;animation-delay:.1s}
+.swave span:nth-child(5){height:5px;animation-delay:0s}
+@keyframes wave{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.9)}}
+
+/* SIDEBAR */
+#sidebar{
+  width:380px;min-width:340px;display:flex;flex-direction:column;
+  background:#161b22;border-left:1px solid #30363d;
+}
+#sb-header{
+  padding:14px 16px 10px;border-bottom:1px solid #30363d;
+  background:#1a1a2e;flex-shrink:0;
+}
+#ctitle{font-size:16px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}
+#csub{font-size:12px;color:#888;margin-top:3px}
+.sevbar{height:4px;border-radius:2px;margin-top:8px;background:#21262d;overflow:hidden}
+.sevfill{height:100%;border-radius:2px;transition:width 1.2s ease,background .5s}
+
+#msgs{
+  flex:1;overflow-y:auto;padding:12px 14px;
+  display:flex;flex-direction:column;gap:8px;
+  scrollbar-width:thin;scrollbar-color:#30363d transparent;
+}
+#msgs::-webkit-scrollbar{width:4px}
+#msgs::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+
+#placeholder{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:2rem;color:#484f58;flex:1;
+}
+#placeholder h3{font-size:14px;font-weight:500;color:#6e7681;margin:12px 0 6px}
+#placeholder p{font-size:12px;line-height:1.6}
+
+.msg{max-width:94%;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.msg.bot{background:#1c2128;border:1px solid #30363d;color:#e6edf3;align-self:flex-start;border-top-left-radius:3px}
+.msg.user{background:#1f4068;color:#cce5ff;align-self:flex-end;border-bottom-right-radius:3px}
+.msg.typing{background:#1c2128;border:1px solid #30363d;color:#484f58;align-self:flex-start;font-style:italic;font-size:11px}
+
+.chart-wrap{
+  background:#1c2128;border:1px solid #30363d;border-radius:10px;
+  padding:12px;margin:4px 0;align-self:stretch;max-width:100%;max-height:200px;
+}
+.chart-title{font-size:10px;color:#8b949e;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+
+.qbtns{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;align-self:flex-start;max-width:94%}
+.qbtn{
+  font-size:11px;padding:4px 10px;border-radius:15px;
+  border:1px solid #30363d;color:#8b949e;background:#1c2128;
+  cursor:pointer;transition:all .15s;
+}
+.qbtn:hover{border-color:#63b3ed;color:#63b3ed;background:rgba(99,179,237,.08)}
+
+#input-area{
+  padding:10px 12px;border-top:1px solid #30363d;
+  display:none;gap:8px;align-items:center;background:#161b22;flex-shrink:0;
+}
+#cinput{
+  flex:1;font-size:13px;padding:8px 12px;border:1px solid #30363d;
+  border-radius:20px;background:#0d1117;color:#e6edf3;outline:none;
+}
+#cinput:focus{border-color:#388bfd}
+#sbtn{
+  background:#1f6feb;color:#fff;border:none;border-radius:50%;
+  width:34px;height:34px;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+#sbtn:hover{background:#388bfd}
+#mbtn{
+  background:transparent;color:#8b949e;border:1px solid #30363d;
+  border-radius:50%;width:34px;height:34px;font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;
+}
+#mbtn.listening{background:rgba(248,81,73,.15);border-color:#f85149;color:#f85149}
+
+/* LEGEND */
+#legbar{
+  display:flex;align-items:center;gap:8px;padding:6px 14px;
+  flex-wrap:wrap;border-top:1px solid #21262d;background:#0d1117;flex-shrink:0;
+}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:#8b949e}
+.ld{width:10px;height:10px;border-radius:2px}
+
+@media(max-width:768px){
+  #main{flex-direction:column}
+  #map-wrap{height:45vw;min-height:220px}
+  #sidebar{width:100%;min-width:unset;height:55vh}
+  body{overflow:auto}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🌍 Diritti delle Donne nel Mondo</h1>
+    <p>Mappa interattiva — clicca su un paese evidenziato · Zoom con rotellina · Trascina per spostarti</p>
+  </div>
+  <div class="hcontrols">
+    <div id="speak-ind"><div class="swave"><span></span><span></span><span></span><span></span><span></span></div>Assistente vocale</div>
+    <div class="vtoggle" id="vtoggle" onclick="toggleVoice()">
+      <div class="vdot"></div><span id="vlabel">Voce Off</span>
+    </div>
+  </div>
+</header>
+
+<div id="main">
+  <div id="map-wrap">
+    <div id="tip">
+      <div id="tip-name"></div>
+      <div id="tip-sev"></div>
+      <div id="tip-hint">Clicca per approfondire</div>
+    </div>
+    <svg id="world-svg"></svg>
+    <div class="zoom-controls">
+      <button class="zbtn" onclick="zoomIn()">+</button>
+      <button class="zbtn" onclick="zoomReset()">⌂</button>
+      <button class="zbtn" onclick="zoomOut()">−</button>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div id="sb-header">
+      <div id="ctitle"><span id="cflag">🌍</span><span id="cname">Seleziona un paese</span></div>
+      <div id="csub">Clicca su un paese evidenziato sulla mappa</div>
+      <div class="sevbar"><div class="sevfill" id="sevfill" style="width:0%;background:#333"></div></div>
+    </div>
+    <div id="msgs">
+      <div id="placeholder">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <circle cx="26" cy="26" r="24" stroke="#484f58" stroke-width="1.5"/>
+          <path d="M26 14C20 14 16 18 16 24C16 30 20 33 26 33C32 33 36 30 36 24C36 18 32 14 26 14Z" stroke="#484f58" stroke-width="1.5" fill="none"/>
+          <path d="M13 44C13 37 19 33 26 33C33 33 39 37 39 44" stroke="#484f58" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h3>Esplora il mondo</h3>
+        <p>Clicca su un paese colorato per scoprire le problematiche, le statistiche e le organizzazioni che supportano le donne.</p>
+      </div>
+    </div>
+    <div id="input-area">
+      <button id="mbtn" onclick="startListen()" title="Parla">🎤</button>
+      <input id="cinput" type="text" placeholder="Fai una domanda..."/>
+      <button id="sbtn" onclick="sendMsg()">➤</button>
+    </div>
+  </div>
+</div>
+
+<div id="legbar">
+  <span style="font-size:10px;color:#8b949e;margin-right:2px">Gravità:</span>
+  <div class="li"><div class="ld" style="background:#6b0000"></div>Critica</div>
+  <div class="li"><div class="ld" style="background:#b52b27"></div>Grave</div>
+  <div class="li"><div class="ld" style="background:#d4600a"></div>Moderata</div>
+  <div class="li"><div class="ld" style="background:#c8960c"></div>Rilevante</div>
+  <div class="li"><div class="ld" style="background:#1e3a5f"></div>Non monitorato</div>
+  <div style="margin-left:auto;font-size:10px;color:#333">IBM Watson Assistant · D3.js · Chart.js</div>
+</div>
+
+<script>
+// ── WATSON ───────────────────────────────────────────────────────────
+const W_KEY  = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
+const W_URL  = 'https://api.eu-de.assistant.watson.cloud.ibm.com/instances/583ee201-23aa-445e-98b1-151cf4a3f9bd';
+const W_AID  = '31a2b287-b080-4d7a-941b-758509618782';
+const W_VER  = '2023-06-15';
+
+// Create a fresh session and send TWO messages:
+// 1st: a dummy message to trigger welcome (and consume it)
+// 2nd: the real country message — now Watson responds with country info only
+async function watsonAsk(countryName) {
+  // Create fresh session for each country click
+  const sr = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions?version=${W_VER}`,
+    {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'}});
+  const { session_id } = await sr.json();
+
+  // Send country name directly — Watson recognizes @paese entity
+  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${session_id}/message?version=${W_VER}`,
+    {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'},
+     body:JSON.stringify({input:{message_type:'text',text:countryName}})});
+  const d = await r.json();
+  const allResp = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
+  
+  // If Watson returned multiple responses, take the longest one (country info, not welcome)
+  if (allResp.length === 0) return '';
+  if (allResp.length === 1) return allResp[0];
+  // Filter: skip short messages (welcome/filler), keep country info (long text)
+  const long = allResp.filter(r => r.trim().length > 80);
+  return long.length > 0 ? long.join('\n\n') : allResp[allResp.length-1];
+}
+
+// For follow-up questions in the same session
+let chatSessionId = null;
+async function watsonMsg(text) {
+  if (!chatSessionId) {
+    const sr = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions?version=${W_VER}`,
+      {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'}});
+    chatSessionId = (await sr.json()).session_id;
+    // consume welcome
+    await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${chatSessionId}/message?version=${W_VER}`,
+      {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'},
+       body:JSON.stringify({input:{message_type:'text',text:'ciao'}})});
+  }
+  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${chatSessionId}/message?version=${W_VER}`,
+    {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'},
+     body:JSON.stringify({input:{message_type:'text',text}})});
+  const d = await r.json();
+  const responses = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
+  return responses.join('\n\n');
+}
+
+// ── COUNTRY DATA ─────────────────────────────────────────────────────
+// Maps ISO country names (as in topojson) to our data
+const countryData = {
+  'Somalia':       {flag:'🇸🇴',sev:4,issue:'MGF 98%, spose bambine 45%',watson:'somalia',stats:{l:['MGF','Spose <18','Istruzione'],v:[98,45,26],c:'#6b0000'}},
+  'Afghanistan':   {flag:'🇦🇫',sev:4,issue:'Istruzione vietata, matrimoni forzati',watson:'afghanistan',stats:{l:['Spose <18','Lavoratrici','Sanità'],v:[28,5,17],c:'#6b0000'}},
+  'Guinea':        {flag:'🇬🇳',sev:4,issue:'MGF 97% — la più alta al mondo',watson:'guinea',stats:{l:['MGF','Spose <18','Istruzione sec.'],v:[97,51,15],c:'#6b0000'}},
+  'Mali':          {flag:'🇲🇱',sev:4,issue:'MGF 89%, spose bambine 52%',watson:'mali',stats:{l:['MGF','Spose <18','Fuori scuola'],v:[89,52,54],c:'#6b0000'}},
+  'Sudan':         {flag:'🇸🇩',sev:3,issue:'MGF 87%, spose bambine 38%',watson:'sudan',stats:{l:['MGF','Spose <18','Sfollate M'],v:[87,38,3.7],c:'#b52b27'}},
+  'Nigeria':       {flag:'🇳🇬',sev:3,issue:'MGF, violenza di genere, discriminazione',watson:'nigeria',stats:{l:['MGF','Spose <18','Viol.dom.'],v:[20,43,30],c:'#b52b27'}},
+  'Yemen':         {flag:'🇾🇪',sev:3,issue:'Spose bambine 32%, crisi umanitaria',watson:'yemen',stats:{l:['Spose <18','Ins.alim.','Sfollate M'],v:[32,71,1.6],c:'#b52b27'}},
+  'Pakistan':      {flag:'🇵🇰',sev:3,issue:'Violenza d\'onore, spose bambine',watson:'pakistan',stats:{l:['Spose <18','Istruz.sec.','Del.onore k'],v:[21,32,1],c:'#b52b27'}},
+  'Ethiopia':      {flag:'🇪🇹',sev:3,issue:'MGF 65%, spose bambine 40%',watson:'etiopia',stats:{l:['MGF','Spose <18','Alfabetizz.'],v:[65,40,35],c:'#b52b27'}},
+  'Syria':         {flag:'🇸🇾',sev:3,issue:'Violenza bellica sistematica',watson:'siria',stats:{l:['Sfollate M','Matr.prec+%','Fuori scuola'],v:[3,200,40],c:'#b52b27'}},
+  'India':         {flag:'🇮🇳',sev:2,issue:'Violenza di genere, discriminazione di casta',watson:'india',stats:{l:['Div.salar.','Matr.prec.','Crimini k'],v:[34,27,405],c:'#d4600a'}},
+  'Egypt':         {flag:'🇪🇬',sev:2,issue:'MGF 87%, molestie sistematiche (ONU 99%)',watson:'egitto',stats:{l:['MGF','Molestie','Lavoratrici'],v:[87,99,23],c:'#d4600a'}},
+  'Iran':          {flag:'🇮🇷',sev:2,issue:'Repressione sistematica, hijab obbligatorio',watson:'iran',stats:{l:['Età min.matr','Donne parl.','Arres.22 k'],v:[13,6,15],c:'#d4600a'}},
+  'Saudi Arabia':  {flag:'🇸🇦',sev:2,issue:'Sistema tutela maschile',watson:'arabia saudita',stats:{l:['Donne lavoro','Gap gen.pos','Rif.parz.%'],v:[33,147,30],c:'#d4600a'}},
+  'Myanmar':       {flag:'🇲🇲',sev:2,issue:'Violenza militare, tratta di donne',watson:'myanmar',stats:{l:['Sfollate k','Spose <18','Arres.21 k'],v:[700,36,2],c:'#d4600a'}},
+  'Guatemala':     {flag:'🇬🇹',sev:2,issue:'Femminicidio, spose bambine indigene',watson:'guatemala',stats:{l:['Femm.anno','Spose <18','Impunità%'],v:[700,30,97],c:'#d4600a'}},
+  'Nepal':         {flag:'🇳🇵',sev:1,issue:'Chhaupadi, tratta, spose bambine',watson:'nepal',stats:{l:['Spose <18','Tratte k','Mort.mat.'],v:[40,15,186],c:'#c8960c'}},
+  'Brazil':        {flag:'🇧🇷',sev:1,issue:'Femminicidio, violenza domestica',watson:'brasile',stats:{l:['Femm.anno','Div.sal.%','Viol.dom.k'],v:[1400,26,43],c:'#c8960c'}},
+  'Mexico':        {flag:'🇲🇽',sev:1,issue:'Femminicidio 10/giorno, sparizioni',watson:'messico',stats:{l:['Femm./gg','Scomp.k','Viol.dom.%'],v:[10,20,43],c:'#c8960c'}},
+  'Bangladesh':    {flag:'🇧🇩',sev:3,issue:'Spose bambine, acido, violenza domestica',watson:'bangladesh',stats:{l:['Spose <18','Viol.dom.%','Att.acido k'],v:[59,72,3.5],c:'#b52b27'}},
+  'Chad':          {flag:'🇹🇩',sev:4,issue:'MGF 44%, spose bambine 52%',watson:'ciad',stats:{l:['MGF','Spose <18','Mort.mat.'],v:[44,52,1140],c:'#6b0000'}},
+  'Iraq':          {flag:'🇮🇶',sev:3,issue:'Matrimoni forzati, violenza settaria',watson:'iraq',stats:{l:['Spose <18','Donne parl.','Viol.dom.%'],v:[28,26,46],c:'#b52b27'}},
+};
+
+const sevConfig = {
+  4:{color:'#6b0000',label:'Situazione critica',pct:100},
+  3:{color:'#b52b27',label:'Situazione grave',pct:75},
+  2:{color:'#d4600a',label:'Situazione moderata',pct:50},
+  1:{color:'#c8960c',label:'Situazione rilevante',pct:25},
+};
+
+// ── D3 MAP ────────────────────────────────────────────────────────────
+const svg    = d3.select('#world-svg');
+const wrap   = document.getElementById('map-wrap');
+let w = wrap.clientWidth, h = wrap.clientHeight;
+svg.attr('width',w).attr('height',h);
+
+const projection = d3.geoNaturalEarth1()
+  .scale(w/6.2)
+  .translate([w/2, h/2]);
+const path = d3.geoPath().projection(projection);
+
+// Zoom behaviour
+const zoom = d3.zoom()
+  .scaleExtent([1, 8])
+  .on('zoom', e => g.attr('transform', e.transform));
+svg.call(zoom);
+
+const g = svg.append('g');
+
+// Sphere (ocean background)
+g.append('path')
+  .datum({type:'Sphere'})
+  .attr('class','sphere')
+  .attr('d', path);
+
+// Graticule
+g.append('path')
+  .datum(d3.geoGraticule()())
+  .attr('class','graticule')
+  .attr('d', path);
+
+// Load world topojson from CDN
+d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world => {
+  const countries = topojson.feature(world, world.objects.countries);
+  const borders   = topojson.mesh(world, world.objects.countries, (a,b)=>a!==b);
+  const names     = new Map();
+
+  // We need country names — use a simple numeric ID → name lookup
+  // Using the built-in d3 approach with a small embedded lookup for our target countries
+  const idToName = {
+    4:'Afghanistan',32:'Argentina',50:'Bangladesh',76:'Brazil',
+    104:'Myanmar',120:'Cameroon',140:'Central African Republic',
+    144:'Sri Lanka',152:'Chile',170:'Colombia',180:'Congo',
+    188:'Costa Rica',204:'Benin',214:'Dominican Republic',
+    218:'Ecuador',818:'Egypt',222:'El Salvador',231:'Ethiopia',
+    266:'Gabon',288:'Ghana',320:'Guatemala',324:'Guinea',
+    332:'Haiti',356:'India',364:'Iran',368:'Iraq',
+    384:'Côte d\'Ivoire',400:'Jordan',404:'Kenya',
+    418:'Laos',422:'Lebanon',430:'Liberia',434:'Libya',
+    466:'Mali',484:'Mexico',504:'Morocco',516:'Namibia',
+    524:'Nepal',558:'Nicaragua',566:'Nigeria',586:'Pakistan',
+    591:'Panama',600:'Paraguay',604:'Peru',608:'Philippines',
+    646:'Rwanda',682:'Saudi Arabia',686:'Senegal',
+    706:'Somalia',729:'Sudan',760:'Syria',
+    800:'Uganda',834:'Tanzania',858:'Uruguay',
+    887:'Yemen',894:'Zambia',716:'Zimbabwe',
+    408:'North Korea',410:'South Korea',792:'Turkey',
+    784:'United Arab Emirates',704:'Vietnam',764:'Thailand',
+    116:'Cambodia',360:'Indonesia',458:'Malaysia',
+  };
+
+  g.selectAll('.land')
+    .data(countries.features)
+    .enter().append('path')
+    .attr('class', d => {
+      const name = idToName[+d.id];
+      const cd   = name ? countryData[name] : null;
+      return cd ? `land c${cd.sev} active` : 'land';
+    })
+    .attr('d', path)
+    .attr('id', d => {
+      const name = idToName[+d.id];
+      return name ? 'c-'+name.replace(/\s/g,'-') : null;
+    })
+    .on('mouseenter', function(event, d) {
+      const name = idToName[+d.id];
+      const cd   = countryData[name];
+      if (!cd) return;
+      const tip = document.getElementById('tip');
+      tip.style.display = 'block';
+      document.getElementById('tip-name').textContent = cd.flag + ' ' + name;
+      document.getElementById('tip-sev').textContent  = sevConfig[cd.sev].label;
+      document.getElementById('tip-sev').style.color  = sevConfig[cd.sev].color;
+    })
+    .on('mousemove', function(event) {
+      const tip = document.getElementById('tip');
+      const br  = wrap.getBoundingClientRect();
+      let x = event.clientX - br.left + 14;
+      let y = event.clientY - br.top  + 14;
+      if (x + 230 > w) x -= 244;
+      if (y + 90  > h) y -= 100;
+      tip.style.left = x+'px';
+      tip.style.top  = y+'px';
+    })
+    .on('mouseleave', function() {
+      document.getElementById('tip').style.display = 'none';
+    })
+    .on('click', function(event, d) {
+      const name = idToName[+d.id];
+      const cd   = countryData[name];
+      if (!cd) return;
+      document.getElementById('tip').style.display = 'none';
+      playClick();
+      // Highlight selected
+      d3.selectAll('.land').classed('selected', false);
+      d3.select(this).classed('selected', true);
+      selectCountry(name, cd);
+      // Zoom to country
+      const [[x0,y0],[x1,y1]] = path.bounds(d);
+      const sc = Math.min(8, 0.9 / Math.max((x1-x0)/w, (y1-y0)/h));
+      const tx = w/2 - sc*(x0+x1)/2;
+      const ty = h/2 - sc*(y0+y1)/2;
+      svg.transition().duration(750)
+        .call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(sc));
+    });
+
+  // Borders
+  g.append('path')
+    .datum(borders)
+    .attr('class','border')
+    .attr('d', path);
+
+}).catch(err => {
+  // Fallback message if CDN fails
+  g.append('text')
+    .attr('x', w/2).attr('y', h/2)
+    .attr('text-anchor','middle')
+    .attr('fill','#8b949e')
+    .attr('font-size','14px')
+    .text('Caricamento mappa... assicurati di avere connessione internet.');
+});
+
+// Zoom buttons
+function zoomIn()    { svg.transition().duration(400).call(zoom.scaleBy, 1.5); }
+function zoomOut()   { svg.transition().duration(400).call(zoom.scaleBy, 0.67); }
+function zoomReset() { svg.transition().duration(600).call(zoom.transform, d3.zoomIdentity); }
+
+// Resize handler
+window.addEventListener('resize', () => {
+  w = wrap.clientWidth; h = wrap.clientHeight;
+  svg.attr('width',w).attr('height',h);
+  projection.scale(w/6.2).translate([w/2,h/2]);
+  svg.selectAll('path').attr('d', path);
+});
+
+// ── COUNTRY SELECTION ─────────────────────────────────────────────────
+let currentChart = null;
+let currentCountryWatson = null;
+
+async function selectCountry(name, cd) {
+  const italianName = cd.watson.charAt(0).toUpperCase() + cd.watson.slice(1);
+  const sev = sevConfig[cd.sev];
+  document.getElementById('cflag').textContent  = cd.flag;
+  document.getElementById('cname').textContent  = name;
+  document.getElementById('csub').textContent   = sev.label + ' — ' + cd.issue;
+  document.getElementById('sevfill').style.width      = sev.pct + '%';
+  document.getElementById('sevfill').style.background = sev.color;
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('input-area').style.display  = 'flex';
+
+  // Clear everything — messages, charts, quick buttons
+  const msgs = document.getElementById('msgs');
+  msgs.innerHTML = '';
+  if (currentChart) { currentChart.destroy(); currentChart = null; }
+
+  addMsg(cd.flag + ' ' + name, 'user');
+  addMsg('Cerco informazioni su ' + name + '...', 'typing');
+
+  try {
+    // Use fresh session to avoid welcome message interference
+    chatSessionId = null; // reset chat session for new country
+  currentCountryWatson = cd.watson;
+    let reply = await watsonAsk(cd.watson);
+    removeTyping();
+    if (reply && reply.trim().length > 20) {
+      addMsg(reply, 'bot');
+      speak(reply);
+    } else {
+      addMsg('Watson non ha trovato il nodo per "' + cd.watson + '".\n\nVerifica in Watson Assistant:\n• Il nodo figlio esiste con la condizione @paese:' + cd.watson + '\n• Il testo di risposta è stato salvato correttamente', 'bot');
+    }
+    showChart(name, cd.stats);
+    addQuickBtns(['Statistiche ' + name, 'Organizzazioni per ' + name, 'Come posso aiutare?']);
+  } catch(e) {
+    removeTyping();
+    addMsg('⚠️ Errore connessione Watson: ' + e.message + '\n\nVerifica che le credenziali siano corrette e che Watson Assistant sia attivo.', 'bot');
+    showChart(name, cd.stats);
+  }
+}
+
+function showChart(name, stats) {
+  const msgs = document.getElementById('msgs');
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-wrap';
+  wrap.style.height = '180px';
+  wrap.innerHTML = '<div class="chart-title">Statistiche chiave — '+name+'</div><canvas id="cc" style="max-height:140px"></canvas>';
+  msgs.appendChild(wrap);
+  if (currentChart) { currentChart.destroy(); currentChart = null; }
+  currentChart = new Chart(document.getElementById('cc'), {
+    type:'bar',
+    data:{
+      labels: stats.l,
+      datasets:[{data:stats.v,backgroundColor:stats.c+'bb',borderColor:stats.c,borderWidth:1,borderRadius:4}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      animation:{duration:900,easing:'easeOutQuart'},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}},
+        y:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}}
+      }
+    }
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────
+function addMsg(text, type) {
+  const msgs = document.getElementById('msgs');
+  const div = document.createElement('div');
+  div.className = 'msg ' + type;
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function removeTyping() { const t = document.querySelector('.msg.typing'); if(t) t.remove(); }
+function addQuickBtns(labels) {
+  const msgs = document.getElementById('msgs');
+  const wrap = document.createElement('div');
+  wrap.className = 'qbtns';
+  labels.forEach(l => {
+    const b = document.createElement('button');
+    b.className='qbtn'; b.textContent=l;
+    b.onclick=()=>{wrap.remove();sendUserMsg(l);};
+    wrap.appendChild(b);
+  });
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+async function sendUserMsg(text) {
+  addMsg(text,'user'); addMsg('Cerco...','typing');
+  // If asking about orgs or stats, add country context
+  const msg = currentCountryWatson ? text + ' ' + currentCountryWatson : text;
+  try { const r=await watsonMsg(msg); removeTyping(); addMsg(r,'bot'); speak(r); }
+  catch(e) { removeTyping(); addMsg('Errore. Riprova.','bot'); }
+}
+function sendMsg() {
+  const i=document.getElementById('cinput');
+  const t=i.value.trim(); if(!t)return; i.value=''; sendUserMsg(t);
+}
+document.getElementById('cinput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
+
+// ── VOICE ─────────────────────────────────────────────────────────────
+let voiceOn=false;
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  document.getElementById('vtoggle').classList.toggle('on',voiceOn);
+  document.getElementById('vlabel').textContent=voiceOn?'Voce On':'Voce Off';
+  if(!voiceOn){speechSynthesis.cancel();document.getElementById('speak-ind').style.display='none';}
+}
+function speak(text){
+  if(!voiceOn||!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  const clean=text.replace(/[🌍📌📖📊🤝•]/g,'').replace(/\n+/g,' ').substring(0,600);
+  const u=new SpeechSynthesisUtterance(clean);
+  u.lang='it-IT';u.rate=0.95;u.pitch=1.05;
+  const v=speechSynthesis.getVoices().find(x=>x.lang.startsWith('it'));
+  if(v)u.voice=v;
+  u.onstart=()=>document.getElementById('speak-ind').style.display='flex';
+  u.onend=u.onerror=()=>document.getElementById('speak-ind').style.display='none';
+  speechSynthesis.speak(u);
+}
+
+// ── MIC ───────────────────────────────────────────────────────────────
+function startListen(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Usa Chrome per il riconoscimento vocale.');return;}
+  const r=new SR(); r.lang='it-IT';
+  document.getElementById('mbtn').classList.add('listening');
+  r.onresult=e=>{
+    document.getElementById('cinput').value=e.results[0][0].transcript;
+    document.getElementById('mbtn').classList.remove('listening');
+    sendMsg();
+  };
+  r.onerror=r.onend=()=>document.getElementById('mbtn').classList.remove('listening');
+  r.start();
+}
+
+// ── SOUND ─────────────────────────────────────────────────────────────
+function playClick(){
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.frequency.setValueAtTime(520,c.currentTime);
+    o.frequency.exponentialRampToValueAtTime(880,c.currentTime+0.12);
+    g.gain.setValueAtTime(0.12,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.35);
+    o.start();o.stop(c.currentTime+0.35);
+  }catch(e){}
+}
+
+// Init Watson session
+speechSynthesis.onvoiceschanged=()=>{};
+watsonSession().catch(()=>{});
+</script>
+</body>
+</html>
