@@ -242,57 +242,43 @@ header p{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
 
 <script>
 // ── WATSON ───────────────────────────────────────────────────────────
-const W_KEY = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
-const W_URL = 'https://api.eu-de.assistant.watson.cloud.ibm.com/instances/583ee201-23aa-445e-98b1-151cf4a3f9bd';
-const W_AID = '31a2b287-b080-4d7a-941b-758509618782';
-const W_SKILL = '2b57f74a-9d06-4675-b8ec-aaea4bb182ff'; // Dialog Skill ID
-const W_VER = '2021-11-27';
+const W_KEY  = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
+const W_BASE = 'https://api.eu-de.assistant.watson.cloud.ibm.com';
+const W_INST = '583ee201-23aa-445e-98b1-151cf4a3f9bd';
+const W_AID  = '31a2b287-b080-4d7a-941b-758509618782';
+const W_SKILL= '2b57f74a-9d06-4675-b8ec-aaea4bb182ff';
+const W_VER  = '2021-06-14';
 const W_AUTH = 'Basic ' + btoa('apikey:' + W_KEY);
 
-// Watson v1 API — works directly with Dialog skill, no session needed
-async function callWatsonV1(text, context) {
-  const r = await fetch(`${W_URL}/v1/workspaces/${W_SKILL}/message?version=${W_VER}`, {
+// Watson v1 stateless — completely fresh call each time, no session, no context
+async function askWatson(text) {
+  const url = `${W_BASE}/instances/${W_INST}/v1/workspaces/${W_SKILL}/message?version=${W_VER}&nodes_visited_details=true`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      input: { text: text },
-      context: context || {}
-    })
+    body: JSON.stringify({ input: { text }, context: {} })
   });
-  const d = await r.json();
-  // Watson v1 returns text in output.text (array) OR output.generic (objects)
-  const fromText = (d.output?.text || []).filter(x => x && x.trim().length > 0);
-  const fromGeneric = (d.output?.generic || []).map(x => x.text || '').filter(x => x.trim().length > 0);
-  const texts = fromText.length > 0 ? fromText : fromGeneric;
-  return { texts, context: d.context || {} };
+  const d = await res.json();
+  console.log('Watson raw response:', JSON.stringify(d).substring(0, 300));
+  // Collect from both output.text and output.generic
+  const t1 = (d.output?.text || []).filter(x => x && x.trim().length > 0);
+  const t2 = (d.output?.generic || []).map(x => x.text || '').filter(x => x.trim().length > 0);
+  return t1.length > 0 ? t1 : t2;
 }
 
-// Called when user clicks a country on the map
+// For country clicks: send message twice if first response is short (filler)
 async function watsonAsk(countryName) {
-  // Step 1: send country name — Watson triggers #info_paese + skip user input
-  const first = await callWatsonV1('dimmi di ' + countryName, {});
-  // Collect all texts
-  let allTexts = [...first.texts];
-  // Step 2: if Watson used "skip user input", the child node response comes in next call
-  if (first.texts.length === 0 || first.texts.every(t => t.length < 80)) {
-    const second = await callWatsonV1('', first.context);
-    allTexts = [...allTexts, ...second.texts];
-  }
-  if (allTexts.length === 0) return '';
-  // Return longest text (country info, not "un momento...")
-  const long = allTexts.filter(t => t.length > 80);
-  if (long.length > 0) return long.reduce((a,b) => a.length >= b.length ? a : b, '');
-  return allTexts.reduce((a,b) => a.length >= b.length ? a : b, '');
+  const texts = await askWatson('dimmi di ' + countryName);
+  console.log('watsonAsk texts:', texts);
+  if (texts.length === 0) return 'Nessuna risposta da Watson per ' + countryName;
+  const long = texts.filter(t => t.length > 80);
+  return long.length > 0 ? long[0] : texts[texts.length - 1];
 }
 
-// Chat session for follow-up questions — fresh context per country
-let chatContext = {};
+// Chat follow-up — uses simple context-free calls
 async function watsonMsg(text) {
-  const result = await callWatsonV1(text, chatContext);
-  chatContext = result.context || {};
-  const long = result.texts.filter(t => t.length > 80);
-  if (long.length > 0) return long.join('\n\n');
-  return result.texts.join('\n\n');
+  const texts = await askWatson(text);
+  return texts.join('\n\n') || 'Nessuna risposta.';
 }
 
 // ── COUNTRY DATA ─────────────────────────────────────────────────────
@@ -499,7 +485,7 @@ async function selectCountry(name, cd) {
 
   try {
     // Use fresh session to avoid welcome message interference
-    chatContext = {}; // reset context for new country
+    // fresh session per country (no context needed)
   currentCountryWatson = cd.watson;
     let reply = await watsonAsk(cd.watson);
     removeTyping();
