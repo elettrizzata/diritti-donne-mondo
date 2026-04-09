@@ -245,50 +245,46 @@ header p{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
 const W_KEY = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
 const W_URL = 'https://api.eu-de.assistant.watson.cloud.ibm.com/instances/583ee201-23aa-445e-98b1-151cf4a3f9bd';
 const W_AID = '31a2b287-b080-4d7a-941b-758509618782';
-const W_VER = '2023-06-15';
+const W_SKILL = '2b57f74a-9d06-4675-b8ec-aaea4bb182ff'; // Dialog Skill ID
+const W_VER = '2021-11-27';
 const W_AUTH = 'Basic ' + btoa('apikey:' + W_KEY);
 
-async function newSession() {
-  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions?version=${W_VER}`, {
-    method: 'POST',
-    headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' }
-  });
-  const d = await r.json();
-  if (!d.session_id) throw new Error('Session creation failed: ' + JSON.stringify(d));
-  return d.session_id;
-}
-
-async function sendMessage_watson(sessionId, text) {
-  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${sessionId}/message?version=${W_VER}`, {
+// Watson v1 API — works directly with Dialog skill, no session needed
+async function callWatsonV1(text, context) {
+  const r = await fetch(`${W_URL}/v1/workspaces/${W_SKILL}/message?version=${W_VER}`, {
     method: 'POST',
     headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: { message_type: 'text', text: text } })
+    body: JSON.stringify({
+      input: { text: text },
+      context: context || {}
+    })
   });
   const d = await r.json();
-  return (d.output?.generic || []).map(x => x.text || '').filter(x => x.trim().length > 0);
+  const texts = (d.output?.text || []).filter(x => x.trim().length > 0);
+  return { texts, context: d.context || {} };
 }
 
 // Called when user clicks a country on the map
 async function watsonAsk(countryName) {
-  const sid = await newSession();
-  // First call gets welcome message — we discard it
-  await sendMessage_watson(sid, 'ciao');
-  // Second call gets country info
-  const responses = await sendMessage_watson(sid, countryName);
-  // Return longest response (country info, not filler)
-  if (responses.length === 0) return '';
-  return responses.reduce((a, b) => a.length >= b.length ? a : b, '');
+  // First call — triggers welcome, capture context
+  const first = await callWatsonV1('ciao', {});
+  // Second call — send country name with context from first call
+  const second = await callWatsonV1(countryName, first.context);
+  if (second.texts.length === 0) return '';
+  // Return longest response (country info)
+  return second.texts.reduce((a, b) => a.length >= b.length ? a : b, '');
 }
 
 // Chat session for follow-up questions
-let chatSid = null;
+let chatContext = {};
 async function watsonMsg(text) {
-  if (!chatSid) {
-    chatSid = await newSession();
-    await sendMessage_watson(chatSid, 'ciao'); // consume welcome
+  if (!chatContext._initialized) {
+    const first = await callWatsonV1('ciao', {});
+    chatContext = { ...first.context, _initialized: true };
   }
-  const responses = await sendMessage_watson(chatSid, text);
-  return responses.join('\n\n');
+  const result = await callWatsonV1(text, chatContext);
+  chatContext = { ...result.context, _initialized: true };
+  return result.texts.join('\n\n');
 }
 
 // ── COUNTRY DATA ─────────────────────────────────────────────────────
