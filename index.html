@@ -289,6 +289,13 @@ async function watsonMsg(text) {
 
 // ── COUNTRY DATA ─────────────────────────────────────────────────────
 // Maps ISO country names (as in topojson) to our data
+const sevConfig = {
+  4:{color:'#6b0000',label:'Situazione critica',pct:100},
+  3:{color:'#b52b27',label:'Situazione grave',pct:75},
+  2:{color:'#d4600a',label:'Situazione moderata',pct:50},
+  1:{color:'#c8960c',label:'Situazione rilevante',pct:25},
+};
+
 const countryData = {
   'Somalia':       {flag:'🇸🇴',sev:4,issue:'MGF 98%, spose bambine 45%',watson:'somalia',
     info:`🌍 SOMALIA\n\n📌 Problematiche principali:\nInfibulazione (MGF), spose bambine, violenza di genere\n\n📖 Origine del problema:\nLa MGF è radicata in tradizioni preislamiche legate al controllo della sessualità femminile. Il matrimonio precoce è legato a doti e povertà estrema.\n\n📊 Statistiche chiave:\n• Donne con MGF: 98%\n• Spose sotto 18 anni: 45%\n• Donne con istruzione: 26%\n• Mortalità materna: 732/100.000\n\n🤝 Organizzazioni che aiutano:\n• 28 Too Many — www.28toomany.org\n• UNICEF Somalia — www.unicef.org/somalia\n• Girls Not Brides — www.girlsnotbrides.org`,
