@@ -242,52 +242,52 @@ header p{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
 
 <script>
 // ── WATSON ───────────────────────────────────────────────────────────
-const W_KEY  = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
-const W_URL  = 'https://api.eu-de.assistant.watson.cloud.ibm.com/instances/583ee201-23aa-445e-98b1-151cf4a3f9bd';
-const W_AID  = '31a2b287-b080-4d7a-941b-758509618782';
-const W_VER  = '2023-06-15';
+const W_KEY = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
+const W_URL = 'https://api.eu-de.assistant.watson.cloud.ibm.com/instances/583ee201-23aa-445e-98b1-151cf4a3f9bd';
+const W_AID = '31a2b287-b080-4d7a-941b-758509618782';
+const W_VER = '2023-06-15';
+const W_AUTH = 'Basic ' + btoa('apikey:' + W_KEY);
 
-// Create a fresh session and send TWO messages:
-// 1st: a dummy message to trigger welcome (and consume it)
-// 2nd: the real country message — now Watson responds with country info only
-async function watsonAsk(countryName) {
-  // Create fresh session for each country click
-  const sr = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions?version=${W_VER}`,
-    {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'}});
-  const { session_id } = await sr.json();
-
-  // Send country name directly — Watson recognizes @paese entity
-  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${session_id}/message?version=${W_VER}`,
-    {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'},
-     body:JSON.stringify({input:{message_type:'text',text:countryName}})});
+async function newSession() {
+  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions?version=${W_VER}`, {
+    method: 'POST',
+    headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' }
+  });
   const d = await r.json();
-  const allResp = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
-  
-  // If Watson returned multiple responses, take the longest one (country info, not welcome)
-  if (allResp.length === 0) return '';
-  if (allResp.length === 1) return allResp[0];
-  // Filter: skip short messages (welcome/filler), keep country info (long text)
-  const long = allResp.filter(r => r.trim().length > 80);
-  return long.length > 0 ? long.join('\n\n') : allResp[allResp.length-1];
+  if (!d.session_id) throw new Error('Session creation failed: ' + JSON.stringify(d));
+  return d.session_id;
 }
 
-// For follow-up questions in the same session
-let chatSessionId = null;
-async function watsonMsg(text) {
-  if (!chatSessionId) {
-    const sr = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions?version=${W_VER}`,
-      {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'}});
-    chatSessionId = (await sr.json()).session_id;
-    // consume welcome
-    await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${chatSessionId}/message?version=${W_VER}`,
-      {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'},
-       body:JSON.stringify({input:{message_type:'text',text:'ciao'}})});
-  }
-  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${chatSessionId}/message?version=${W_VER}`,
-    {method:'POST',headers:{'Authorization':'Basic '+btoa('apikey:'+W_KEY),'Content-Type':'application/json'},
-     body:JSON.stringify({input:{message_type:'text',text}})});
+async function sendMessage_watson(sessionId, text) {
+  const r = await fetch(`${W_URL}/v2/assistants/${W_AID}/sessions/${sessionId}/message?version=${W_VER}`, {
+    method: 'POST',
+    headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input: { message_type: 'text', text: text } })
+  });
   const d = await r.json();
-  const responses = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
+  return (d.output?.generic || []).map(x => x.text || '').filter(x => x.trim().length > 0);
+}
+
+// Called when user clicks a country on the map
+async function watsonAsk(countryName) {
+  const sid = await newSession();
+  // First call gets welcome message — we discard it
+  await sendMessage_watson(sid, 'ciao');
+  // Second call gets country info
+  const responses = await sendMessage_watson(sid, countryName);
+  // Return longest response (country info, not filler)
+  if (responses.length === 0) return '';
+  return responses.reduce((a, b) => a.length >= b.length ? a : b, '');
+}
+
+// Chat session for follow-up questions
+let chatSid = null;
+async function watsonMsg(text) {
+  if (!chatSid) {
+    chatSid = await newSession();
+    await sendMessage_watson(chatSid, 'ciao'); // consume welcome
+  }
+  const responses = await sendMessage_watson(chatSid, text);
   return responses.join('\n\n');
 }
 
@@ -495,7 +495,7 @@ async function selectCountry(name, cd) {
 
   try {
     // Use fresh session to avoid welcome message interference
-    chatSessionId = null; // reset chat session for new country
+    chatSid = null; // reset chat session for new country
   currentCountryWatson = cd.watson;
     let reply = await watsonAsk(cd.watson);
     removeTyping();
@@ -567,7 +567,7 @@ function addQuickBtns(labels) {
 async function sendUserMsg(text) {
   addMsg(text,'user'); addMsg('Cerco...','typing');
   // If asking about orgs or stats, add country context
-  const msg = currentCountryWatson ? text + ' ' + currentCountryWatson : text;
+  const msg = text;
   try { const r=await watsonMsg(msg); removeTyping(); addMsg(r,'bot'); speak(r); }
   catch(e) { removeTyping(); addMsg('Errore. Riprova.','bot'); }
 }
@@ -629,7 +629,7 @@ function playClick(){
 
 // Init Watson session
 speechSynthesis.onvoiceschanged=()=>{};
-watsonSession().catch(()=>{});
+// Watson session created on demand per country click
 </script>
 </body>
 </html>
