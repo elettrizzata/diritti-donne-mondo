@@ -246,42 +246,37 @@ const W_KEY  = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
 const W_BASE = 'https://api.eu-de.assistant.watson.cloud.ibm.com';
 const W_INST = '583ee201-23aa-445e-98b1-151cf4a3f9bd';
 const W_AID  = '31a2b287-b080-4d7a-941b-758509618782';
-const W_SKILL= '2b57f74a-9d06-4675-b8ec-aaea4bb182ff';
 const W_VER  = '2021-06-14';
 const W_AUTH = 'Basic ' + btoa('apikey:' + W_KEY);
 
-// Watson v1 stateless — completely fresh call each time, no session, no context
 async function askWatson(text) {
-  const url = `${W_BASE}/instances/${W_INST}/v1/workspaces/${W_SKILL}/message?version=${W_VER}&nodes_visited_details=true`;
+  // Stateless API — no session, no context carryover between calls
+  const url = ${W_BASE}/instances/${W_INST}/v2/assistants/${W_AID}/message?version=${W_VER};
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ input: { text }, context: {} })
+    body: JSON.stringify({
+      input: { message_type: 'text', text: text },
+      context: {}
+    })
   });
   const d = await res.json();
-  console.log('Watson raw response:', JSON.stringify(d).substring(0, 300));
-  // Collect from both output.text and output.generic
-  const t1 = (d.output?.text || []).filter(x => x && x.trim().length > 0);
-  const t2 = (d.output?.generic || []).map(x => x.text || '').filter(x => x.trim().length > 0);
-  return t1.length > 0 ? t1 : t2;
+  console.log('Watson:', JSON.stringify(d).substring(0,200));
+  const t1 = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
+  return t1;
 }
 
-// For country clicks: send message twice if first response is short (filler)
 async function watsonAsk(countryName) {
   const texts = await askWatson('dimmi di ' + countryName);
-  console.log('watsonAsk texts:', texts);
   if (texts.length === 0) return 'Nessuna risposta da Watson per ' + countryName;
   const long = texts.filter(t => t.length > 80);
   return long.length > 0 ? long[0] : texts[texts.length - 1];
 }
 
-// Chat follow-up — uses simple context-free calls
 async function watsonMsg(text) {
   const texts = await askWatson(text);
   return texts.join('\n\n') || 'Nessuna risposta.';
 }
-
-// ── COUNTRY DATA ─────────────────────────────────────────────────────
 // Maps ISO country names (as in topojson) to our data
 const countryData = {
   'Somalia':       {flag:'🇸🇴',sev:4,issue:'MGF 98%, spose bambine 45%',watson:'somalia',stats:{l:['MGF','Spose <18','Istruzione'],v:[98,45,26],c:'#6b0000'}},
