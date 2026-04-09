@@ -269,20 +269,29 @@ async function callWatsonV1(text, context) {
 
 // Called when user clicks a country on the map
 async function watsonAsk(countryName) {
-  // Send "dimmi di X" — triggers #info_paese intent AND @paese entity in one call
-  const result = await callWatsonV1('dimmi di ' + countryName, {});
-  if (result.texts.length === 0) return '';
-  // Filter out short messages like "un momento", keep the real country info
-  const long = result.texts.filter(t => t.length > 80);
+  // Step 1: send country name — Watson triggers #info_paese + skip user input
+  const first = await callWatsonV1('dimmi di ' + countryName, {});
+  // Collect all texts
+  let allTexts = [...first.texts];
+  // Step 2: if Watson used "skip user input", the child node response comes in next call
+  if (first.texts.length === 0 || first.texts.every(t => t.length < 80)) {
+    const second = await callWatsonV1('', first.context);
+    allTexts = [...allTexts, ...second.texts];
+  }
+  if (allTexts.length === 0) return '';
+  // Return longest text (country info, not "un momento...")
+  const long = allTexts.filter(t => t.length > 80);
   if (long.length > 0) return long.reduce((a,b) => a.length >= b.length ? a : b, '');
-  return result.texts.reduce((a, b) => a.length >= b.length ? a : b, '');
+  return allTexts.reduce((a,b) => a.length >= b.length ? a : b, '');
 }
 
-// Chat session for follow-up questions
+// Chat session for follow-up questions — fresh context per country
 let chatContext = {};
 async function watsonMsg(text) {
   const result = await callWatsonV1(text, chatContext);
   chatContext = result.context || {};
+  const long = result.texts.filter(t => t.length > 80);
+  if (long.length > 0) return long.join('\n\n');
   return result.texts.join('\n\n');
 }
 
@@ -490,7 +499,7 @@ async function selectCountry(name, cd) {
 
   try {
     // Use fresh session to avoid welcome message interference
-    chatSid = null; // reset chat session for new country
+    chatContext = {}; // reset context for new country
   currentCountryWatson = cd.watson;
     let reply = await watsonAsk(cd.watson);
     removeTyping();
