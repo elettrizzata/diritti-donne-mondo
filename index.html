@@ -266,24 +266,20 @@ async function callWatsonV1(text, context) {
 
 // Called when user clicks a country on the map
 async function watsonAsk(countryName) {
-  // First call — triggers welcome, capture context
-  const first = await callWatsonV1('ciao', {});
-  // Second call — send country name with context from first call
-  const second = await callWatsonV1(countryName, first.context);
-  if (second.texts.length === 0) return '';
-  // Return longest response (country info)
-  return second.texts.reduce((a, b) => a.length >= b.length ? a : b, '');
+  // Send "dimmi di X" — triggers #info_paese intent AND @paese entity in one call
+  const result = await callWatsonV1('dimmi di ' + countryName, {});
+  if (result.texts.length === 0) return '';
+  // Filter out short messages like "un momento", keep the real country info
+  const long = result.texts.filter(t => t.length > 80);
+  if (long.length > 0) return long.reduce((a,b) => a.length >= b.length ? a : b, '');
+  return result.texts.reduce((a, b) => a.length >= b.length ? a : b, '');
 }
 
 // Chat session for follow-up questions
 let chatContext = {};
 async function watsonMsg(text) {
-  if (!chatContext._initialized) {
-    const first = await callWatsonV1('ciao', {});
-    chatContext = { ...first.context, _initialized: true };
-  }
   const result = await callWatsonV1(text, chatContext);
-  chatContext = { ...result.context, _initialized: true };
+  chatContext = result.context || {};
   return result.texts.join('\n\n');
 }
 
