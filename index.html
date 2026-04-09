@@ -243,40 +243,51 @@ header p{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
 <script>
 // ── WATSON ───────────────────────────────────────────────────────────
 const W_KEY  = 'Xzg90dcyL6ud3powOrBbm--2utu-8U_w93HeL3yuZT9Q';
-const W_BASE = 'https://api.eu-de.assistant.watson.cloud.ibm.com';
-const W_INST = '583ee201-23aa-445e-98b1-151cf4a3f9bd';
-const W_AID  = '31a2b287-b080-4d7a-941b-758509618782';
+const W_URL  = 'https://api.eu-de.assistant.watson.cloud.ibm.com/instances/583ee201-23aa-445e-98b1-151cf4a3f9bd';
+const W_SKILL= '2b57f74a-9d06-4675-b8ec-aaea4bb182ff';
 const W_VER  = '2021-06-14';
 const W_AUTH = 'Basic ' + btoa('apikey:' + W_KEY);
 
-async function askWatson(text) {
-  // Stateless API — no session, no context carryover between calls
-  const url = ${W_BASE}/instances/${W_INST}/v2/assistants/${W_AID}/message?version=${W_VER};
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      input: { message_type: 'text', text: text },
-      context: {}
-    })
-  });
+function uid() { return Math.random().toString(36).substring(2) + Date.now().toString(36); }
+
+async function callWatson(text, convId) {
+  const res = await fetch(
+    `${W_URL}/v1/workspaces/${W_SKILL}/message?version=${W_VER}`,
+    {
+      method: 'POST',
+      headers: { 'Authorization': W_AUTH, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        input: { text },
+        context: { conversation_id: convId, system: { initialized: false } }
+      })
+    }
+  );
   const d = await res.json();
-  console.log('Watson:', JSON.stringify(d).substring(0,200));
-  const t1 = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
-  return t1;
+  const t1 = (d.output?.text||[]).filter(x=>x&&x.trim().length>0);
+  const t2 = (d.output?.generic||[]).map(x=>x.text||'').filter(x=>x.trim().length>0);
+  const all = t1.length > 0 ? t1 : t2;
+  return { texts: all, context: d.context||{} };
 }
 
+// Each country gets a brand new conversation_id — guaranteed fresh
 async function watsonAsk(countryName) {
-  const texts = await askWatson('dimmi di ' + countryName);
-  if (texts.length === 0) return 'Nessuna risposta da Watson per ' + countryName;
-  const long = texts.filter(t => t.length > 80);
-  return long.length > 0 ? long[0] : texts[texts.length - 1];
+  const freshId = uid(); // unique ID per country click
+  const result = await callWatson('dimmi di ' + countryName, freshId);
+  if (result.texts.length === 0) return 'Nessuna risposta per ' + countryName;
+  const long = result.texts.filter(t => t.length > 80);
+  return long.length > 0 ? long[0] : result.texts[result.texts.length - 1];
 }
 
+// Follow-up chat reuses context from country call
+let followCtx = {};
 async function watsonMsg(text) {
-  const texts = await askWatson(text);
-  return texts.join('\n\n') || 'Nessuna risposta.';
+  const convId = followCtx.conversation_id || uid();
+  const result = await callWatson(text, convId);
+  followCtx = result.context;
+  return result.texts.join('\n\n') || 'Nessuna risposta.';
 }
+
+// ── COUNTRY DATA ─────────────────────────────────────────────────────
 // Maps ISO country names (as in topojson) to our data
 const countryData = {
   'Somalia':       {flag:'🇸🇴',sev:4,issue:'MGF 98%, spose bambine 45%',watson:'somalia',stats:{l:['MGF','Spose <18','Istruzione'],v:[98,45,26],c:'#6b0000'}},
@@ -480,7 +491,7 @@ async function selectCountry(name, cd) {
 
   try {
     // Use fresh session to avoid welcome message interference
-    // fresh session per country (no context needed)
+    followCtx = {}; // reset follow-up context for new country
   currentCountryWatson = cd.watson;
     let reply = await watsonAsk(cd.watson);
     removeTyping();
