@@ -260,7 +260,10 @@ async function callWatsonV1(text, context) {
     })
   });
   const d = await r.json();
-  const texts = (d.output?.text || []).filter(x => x.trim().length > 0);
+  // Watson v1 returns text in output.text (array) OR output.generic (objects)
+  const fromText = (d.output?.text || []).filter(x => x && x.trim().length > 0);
+  const fromGeneric = (d.output?.generic || []).map(x => x.text || '').filter(x => x.trim().length > 0);
+  const texts = fromText.length > 0 ? fromText : fromGeneric;
   return { texts, context: d.context || {} };
 }
 
