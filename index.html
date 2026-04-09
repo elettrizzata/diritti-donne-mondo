@@ -290,38 +290,75 @@ async function watsonMsg(text) {
 // ── COUNTRY DATA ─────────────────────────────────────────────────────
 // Maps ISO country names (as in topojson) to our data
 const countryData = {
-  'Somalia':       {flag:'🇸🇴',sev:4,issue:'MGF 98%, spose bambine 45%',watson:'somalia',stats:{l:['MGF','Spose <18','Istruzione'],v:[98,45,26],c:'#6b0000'}},
-  'Afghanistan':   {flag:'🇦🇫',sev:4,issue:'Istruzione vietata, matrimoni forzati',watson:'afghanistan',stats:{l:['Spose <18','Lavoratrici','Sanità'],v:[28,5,17],c:'#6b0000'}},
-  'Guinea':        {flag:'🇬🇳',sev:4,issue:'MGF 97% — la più alta al mondo',watson:'guinea',stats:{l:['MGF','Spose <18','Istruzione sec.'],v:[97,51,15],c:'#6b0000'}},
-  'Mali':          {flag:'🇲🇱',sev:4,issue:'MGF 89%, spose bambine 52%',watson:'mali',stats:{l:['MGF','Spose <18','Fuori scuola'],v:[89,52,54],c:'#6b0000'}},
-  'Sudan':         {flag:'🇸🇩',sev:3,issue:'MGF 87%, spose bambine 38%',watson:'sudan',stats:{l:['MGF','Spose <18','Sfollate M'],v:[87,38,3.7],c:'#b52b27'}},
-  'Nigeria':       {flag:'🇳🇬',sev:3,issue:'MGF, violenza di genere, discriminazione',watson:'nigeria',stats:{l:['MGF','Spose <18','Viol.dom.'],v:[20,43,30],c:'#b52b27'}},
-  'Yemen':         {flag:'🇾🇪',sev:3,issue:'Spose bambine 32%, crisi umanitaria',watson:'yemen',stats:{l:['Spose <18','Ins.alim.','Sfollate M'],v:[32,71,1.6],c:'#b52b27'}},
-  'Pakistan':      {flag:'🇵🇰',sev:3,issue:'Violenza d\'onore, spose bambine',watson:'pakistan',stats:{l:['Spose <18','Istruz.sec.','Del.onore k'],v:[21,32,1],c:'#b52b27'}},
-  'Ethiopia':      {flag:'🇪🇹',sev:3,issue:'MGF 65%, spose bambine 40%',watson:'etiopia',stats:{l:['MGF','Spose <18','Alfabetizz.'],v:[65,40,35],c:'#b52b27'}},
-  'Syria':         {flag:'🇸🇾',sev:3,issue:'Violenza bellica sistematica',watson:'siria',stats:{l:['Sfollate M','Matr.prec+%','Fuori scuola'],v:[3,200,40],c:'#b52b27'}},
-  'India':         {flag:'🇮🇳',sev:2,issue:'Violenza di genere, discriminazione di casta',watson:'india',stats:{l:['Div.salar.','Matr.prec.','Crimini k'],v:[34,27,405],c:'#d4600a'}},
-  'Egypt':         {flag:'🇪🇬',sev:2,issue:'MGF 87%, molestie sistematiche (ONU 99%)',watson:'egitto',stats:{l:['MGF','Molestie','Lavoratrici'],v:[87,99,23],c:'#d4600a'}},
-  'Iran':          {flag:'🇮🇷',sev:2,issue:'Repressione sistematica, hijab obbligatorio',watson:'iran',stats:{l:['Età min.matr','Donne parl.','Arres.22 k'],v:[13,6,15],c:'#d4600a'}},
-  'Saudi Arabia':  {flag:'🇸🇦',sev:2,issue:'Sistema tutela maschile',watson:'arabia saudita',stats:{l:['Donne lavoro','Gap gen.pos','Rif.parz.%'],v:[33,147,30],c:'#d4600a'}},
-  'Myanmar':       {flag:'🇲🇲',sev:2,issue:'Violenza militare, tratta di donne',watson:'myanmar',stats:{l:['Sfollate k','Spose <18','Arres.21 k'],v:[700,36,2],c:'#d4600a'}},
-  'Guatemala':     {flag:'🇬🇹',sev:2,issue:'Femminicidio, spose bambine indigene',watson:'guatemala',stats:{l:['Femm.anno','Spose <18','Impunità%'],v:[700,30,97],c:'#d4600a'}},
-  'Nepal':         {flag:'🇳🇵',sev:1,issue:'Chhaupadi, tratta, spose bambine',watson:'nepal',stats:{l:['Spose <18','Tratte k','Mort.mat.'],v:[40,15,186],c:'#c8960c'}},
-  'Brazil':        {flag:'🇧🇷',sev:1,issue:'Femminicidio, violenza domestica',watson:'brasile',stats:{l:['Femm.anno','Div.sal.%','Viol.dom.k'],v:[1400,26,43],c:'#c8960c'}},
-  'Mexico':        {flag:'🇲🇽',sev:1,issue:'Femminicidio 10/giorno, sparizioni',watson:'messico',stats:{l:['Femm./gg','Scomp.k','Viol.dom.%'],v:[10,20,43],c:'#c8960c'}},
-  'Bangladesh':    {flag:'🇧🇩',sev:3,issue:'Spose bambine, acido, violenza domestica',watson:'bangladesh',stats:{l:['Spose <18','Viol.dom.%','Att.acido k'],v:[59,72,3.5],c:'#b52b27'}},
-  'Chad':          {flag:'🇹🇩',sev:4,issue:'MGF 44%, spose bambine 52%',watson:'ciad',stats:{l:['MGF','Spose <18','Mort.mat.'],v:[44,52,1140],c:'#6b0000'}},
-  'Iraq':          {flag:'🇮🇶',sev:3,issue:'Matrimoni forzati, violenza settaria',watson:'iraq',stats:{l:['Spose <18','Donne parl.','Viol.dom.%'],v:[28,26,46],c:'#b52b27'}},
+  'Somalia':       {flag:'🇸🇴',sev:4,issue:'MGF 98%, spose bambine 45%',watson:'somalia',
+    info:`🌍 SOMALIA\n\n📌 Problematiche principali:\nInfibulazione (MGF), spose bambine, violenza di genere\n\n📖 Origine del problema:\nLa MGF è radicata in tradizioni preislamiche legate al controllo della sessualità femminile. Il matrimonio precoce è legato a doti e povertà estrema.\n\n📊 Statistiche chiave:\n• Donne con MGF: 98%\n• Spose sotto 18 anni: 45%\n• Donne con istruzione: 26%\n• Mortalità materna: 732/100.000\n\n🤝 Organizzazioni che aiutano:\n• 28 Too Many — www.28toomany.org\n• UNICEF Somalia — www.unicef.org/somalia\n• Girls Not Brides — www.girlsnotbrides.org`,
+    stats:{l:['MGF','Spose <18','Istruzione'],v:[98,45,26],c:'#6b0000'}},
+  'Afghanistan':   {flag:'🇦🇫',sev:4,issue:'Istruzione vietata, matrimoni forzati',watson:'afghanistan',
+    info:`🌍 AFGHANISTAN\n\n📌 Problematiche principali:\nDivieto istruzione, matrimoni forzati, oppressione sistematica\n\n📖 Origine del problema:\nDal 2021 il regime talebano ha reintrodotto leggi che vietano alle donne l'istruzione oltre la 6ª classe e il lavoro fuori casa.\n\n📊 Statistiche chiave:\n• Ragazze escluse dalla scuola: 1.1 milioni\n• Spose bambine: 28%\n• Donne lavoratrici: meno del 5%\n• Accesso alla sanità: 17%\n\n🤝 Organizzazioni che aiutano:\n• Afghan Women's Network — www.awnetwork.org\n• UNHCR Afghanistan — www.unhcr.org/afghanistan\n• Womankind Worldwide — www.womankind.org.uk`,
+    stats:{l:['Spose <18','Lavoratrici','Sanità'],v:[28,5,17],c:'#6b0000'}},
+  'Guinea':        {flag:'🇬🇳',sev:4,issue:'MGF 97% — la più alta al mondo',watson:'guinea',
+    info:`🌍 GUINEA\n\n📌 Problematiche principali:\nMGF (la più alta percentuale al mondo), spose bambine, violenza di genere\n\n📖 Origine del problema:\nLa Guinea ha il tasso di MGF più elevato globalmente. La pratica è gestita da escissori tradizionali ed è considerata prerequisito per il matrimonio.\n\n📊 Statistiche chiave:\n• Donne con MGF: 97%\n• Spose sotto 18 anni: 51%\n• Donne con istruzione secondaria: 15%\n• Mortalità materna: 576/100.000\n\n🤝 Organizzazioni che aiutano:\n• Tostan Guinea — www.tostan.org\n• UNICEF Guinea — www.unicef.org/guinea\n• Girls Not Brides — www.girlsnotbrides.org`,
+    stats:{l:['MGF','Spose <18','Istruzione sec.'],v:[97,51,15],c:'#6b0000'}},
+  'Mali':          {flag:'🇲🇱',sev:4,issue:'MGF 89%, spose bambine 52%',watson:'mali',
+    info:`🌍 MALI\n\n📌 Problematiche principali:\nMGF, spose bambine, mancanza di istruzione\n\n📖 Origine del problema:\nIl Mali ha una delle percentuali più alte di MGF al mondo. La pratica è considerata obbligo religioso e culturale. Il conflitto armato nel nord ha chiuso centinaia di scuole.\n\n📊 Statistiche chiave:\n• Donne con MGF: 89%\n• Spose sotto 18 anni: 52%\n• Ragazze fuori dalla scuola: 54%\n• Mortalità materna: 562/100.000\n\n🤝 Organizzazioni che aiutano:\n• Plan International Mali — www.plan-international.org\n• 28 Too Many — www.28toomany.org\n• CARE Mali — www.care.org`,
+    stats:{l:['MGF','Spose <18','Fuori scuola'],v:[89,52,54],c:'#6b0000'}},
+  'Sudan':         {flag:'🇸🇩',sev:3,issue:'MGF 87%, spose bambine 38%',watson:'sudan',
+    info:`🌍 SUDAN\n\n📌 Problematiche principali:\nMGF, spose bambine, crisi umanitaria\n\n📖 Origine del problema:\nIl Sudan ha una delle più alte percentuali di MGF al mondo. La pratica è considerata prerequisito per il matrimonio in molte comunità rurali.\n\n📊 Statistiche chiave:\n• Donne con MGF: 87%\n• Spose sotto 18 anni: 38%\n• Donne sfollate interne: 3.7 milioni\n• Mortalità materna: 295/100.000\n\n🤝 Organizzazioni che aiutano:\n• UNICEF Sudan — www.unicef.org/sudan\n• Sudan Women Network — www.sudanwomennetwork.org\n• IRC Sudan — www.rescue.org/country/sudan`,
+    stats:{l:['MGF','Spose <18','Sfollate M'],v:[87,38,3.7],c:'#b52b27'}},
+  'Nigeria':       {flag:'🇳🇬',sev:3,issue:'MGF, violenza di genere, discriminazione',watson:'nigeria',
+    info:`🌍 NIGERIA\n\n📌 Problematiche principali:\nMGF, violenza di genere, discriminazione legale\n\n📖 Origine del problema:\nLa MGF è praticata in oltre 25 gruppi etnici per ragioni di purezza e matrimoniabilità. Il nord del paese applica la legge Sharia.\n\n📊 Statistiche chiave:\n• Donne con MGF: 20%\n• Violenza domestica: 30%\n• Spose bambine: 43%\n• Gender Gap Index: 0.63\n\n🤝 Organizzazioni che aiutano:\n• FIDA Nigeria — www.fidanigeria.org\n• ActionAid Nigeria — www.nigeria.actionaid.org\n• 28 Too Many — www.28toomany.org`,
+    stats:{l:['MGF','Spose <18','Viol.dom.'],v:[20,43,30],c:'#b52b27'}},
+  'Yemen':         {flag:'🇾🇪',sev:3,issue:'Spose bambine 32%, crisi umanitaria',watson:'yemen',
+    info:`🌍 YEMEN\n\n📌 Problematiche principali:\nSpose bambine, violenza di genere, crisi umanitaria\n\n📖 Origine del problema:\nIl conflitto armato dal 2015 ha drasticamente peggiorato la situazione delle donne. La povertà spinge le famiglie a maritare le figlie in cambio di dote.\n\n📊 Statistiche chiave:\n• Spose sotto 18 anni: 32%\n• Donne in insicurezza alimentare: 71%\n• Accesso assistenza sanitaria: 50%\n• Donne sfollate: 1.6 milioni\n\n🤝 Organizzazioni che aiutano:\n• UNICEF Yemen — www.unicef.org/yemen\n• Oxfam Yemen — www.oxfam.org/en/yemen\n• Girls Not Brides — www.girlsnotbrides.org`,
+    stats:{l:['Spose <18','Ins.alim.','Sfollate M'],v:[32,71,1.6],c:'#b52b27'}},
+  'Pakistan':      {flag:'🇵🇰',sev:3,issue:"Violenza d'onore, spose bambine",watson:'pakistan',
+    info:`🌍 PAKISTAN\n\n📌 Problematiche principali:\nViolenza d'onore, spose bambine, discriminazione legale\n\n📖 Origine del problema:\nI delitti d'onore sono radicati in codici tribali come il Pashtunwali. Le leggi penalizzano le donne nei tribunali. Il matrimonio precoce è legato ad accordi tra famiglie.\n\n📊 Statistiche chiave:\n• Delitti d'onore all'anno: oltre 1.000\n• Spose sotto 18 anni: 21%\n• Donne con istruzione secondaria: 32%\n• Donne nel mercato del lavoro: 24%\n\n🤝 Organizzazioni che aiutano:\n• Aurat Foundation — www.aurat.org\n• War Against Rape — www.war.org.pk\n• HRCP Pakistan — www.hrcp-web.org`,
+    stats:{l:['Spose <18','Istruz.sec.','Del.onore k'],v:[21,32,1],c:'#b52b27'}},
+  'Ethiopia':      {flag:'🇪🇹',sev:3,issue:'MGF 65%, spose bambine 40%',watson:'etiopia',
+    info:`🌍 ETIOPIA\n\n📌 Problematiche principali:\nInfibulazione (MGF), spose bambine, scarsa scolarizzazione\n\n📖 Origine del problema:\nLa MGF è praticata da oltre 80 gruppi etnici come rito di passaggio. Il matrimonio precoce è legato alla tradizione del telefa (dote) e alla povertà rurale.\n\n📊 Statistiche chiave:\n• Donne con MGF: 65%\n• Spose sotto 18 anni: 40%\n• Tasso alfabetizzazione femminile: 35%\n• Mortalità materna: 401/100.000\n\n🤝 Organizzazioni che aiutano:\n• UNICEF Etiopia — www.unicef.org/ethiopia\n• Equality Now — www.equalitynow.org\n• EWLA — www.ewla.org.et`,
+    stats:{l:['MGF','Spose <18','Alfabetizz.'],v:[65,40,35],c:'#b52b27'}},
+  'Syria':         {flag:'🇸🇾',sev:3,issue:'Violenza bellica sistematica',watson:'siria',
+    info:`🌍 SIRIA\n\n📌 Problematiche principali:\nViolenza sessuale come arma di guerra, sfollamento, matrimoni di emergenza\n\n📖 Origine del problema:\nIl conflitto siriano dal 2011 ha causato una delle peggiori crisi umanitarie. La violenza sessuale è stata documentata come tattica di guerra sistematica.\n\n📊 Statistiche chiave:\n• Donne sfollate: oltre 3 milioni\n• Aumento matrimoni precoci nei campi profughi: +200%\n• Ragazze fuori dalla scuola: 40%\n• Casi documentati di violenza sessuale bellica: migliaia\n\n🤝 Organizzazioni che aiutano:\n• IRC Siria — www.rescue.org/country/syria\n• UNHCR Siria — www.unhcr.org/syria\n• Women Now — www.womenforwomen.org`,
+    stats:{l:['Sfollate M','Matr.prec+%','Fuori scuola'],v:[3,200,40],c:'#b52b27'}},
+  'India':         {flag:'🇮🇳',sev:2,issue:'Violenza di genere, discriminazione di casta',watson:'india',
+    info:`🌍 INDIA\n\n📌 Problematiche principali:\nViolenza di genere, selezione del sesso, discriminazione di casta\n\n📖 Origine del problema:\nIl sistema delle doti crea pressione economica sulla famiglia della sposa causando violenze. La preferenza per i figli maschi porta all'aborto selettivo.\n\n📊 Statistiche chiave:\n• Crimini contro donne: 405.000 all'anno\n• Divario salariale: 34%\n• Matrimoni precoci: 27%\n• Mortalità materna: 103/100.000\n\n🤝 Organizzazioni che aiutano:\n• Breakthrough India — www.inbreakthrough.org\n• SEWA — www.sewa.org\n• Oxfam India — www.oxfamindia.org`,
+    stats:{l:['Div.salar.','Matr.prec.','Crimini k'],v:[34,27,405],c:'#d4600a'}},
+  'Egypt':         {flag:'🇪🇬',sev:2,issue:'MGF 87%, molestie sistematiche (ONU 99%)',watson:'egitto',
+    info:`🌍 EGITTO\n\n📌 Problematiche principali:\nMGF, molestie sessuali sistematiche, discriminazione legale\n\n📖 Origine del problema:\nNonostante la MGF sia illegale dal 2008, viene ancora praticata nelle aree rurali. L'Egitto ha uno dei tassi più alti di molestie sessuali in luoghi pubblici al mondo.\n\n📊 Statistiche chiave:\n• Donne con MGF: 87%\n• Donne che subiscono molestie: 99% (ONU)\n• Donne nel mercato del lavoro: 23%\n• Spose sotto 18 anni: 17%\n\n🤝 Organizzazioni che aiutano:\n• Egyptian Center for Women's Rights — www.ecwronline.org\n• UN Women Egitto — www.unwomen.org\n• Nazra for Feminist Studies — www.nazra.org`,
+    stats:{l:['MGF','Molestie','Lavoratrici'],v:[87,99,23],c:'#d4600a'}},
+  'Iran':          {flag:'🇮🇷',sev:2,issue:'Repressione sistematica, hijab obbligatorio',watson:'iran',
+    info:`🌍 IRAN\n\n📌 Problematiche principali:\nObbligo hijab, discriminazione legale sistematica, repressione del dissenso\n\n📖 Origine del problema:\nDal 1979 le donne iraniane sono soggette a un codice giuridico che le considera inferiori agli uomini. Le proteste Donna Vita Libertà del 2022 hanno mostrato la resistenza delle donne iraniane.\n\n📊 Statistiche chiave:\n• Età minima matrimonio: 13 anni\n• Donne in parlamento: 6%\n• Attiviste arrestate dal 2022: oltre 15.000\n• Testimonianza legale donna vale metà di un uomo\n\n🤝 Organizzazioni che aiutano:\n• Center for Human Rights in Iran — www.iranhumanrights.org\n• Amnesty International — www.amnesty.org\n• Women's Field — www.womensfield.com`,
+    stats:{l:['Età min.matr','Donne parl.','Arres.22 k'],v:[13,6,15],c:'#d4600a'}},
+  'Saudi Arabia':  {flag:'🇸🇦',sev:2,issue:'Sistema tutela maschile',watson:'arabia saudita',
+    info:`🌍 ARABIA SAUDITA\n\n📌 Problematiche principali:\nSistema della tutela maschile, restrizioni libertà, discriminazione legale\n\n📖 Origine del problema:\nIl sistema mahram ha storicamente richiesto il permesso di un uomo per viaggiare, sposarsi, lavorare. Riforme parziali dal 2017 hanno allentato alcune restrizioni ma attiviste sono state arrestate.\n\n📊 Statistiche chiave:\n• Donne nel mercato del lavoro: 33%\n• Gender Gap Index posizione: 147° su 156\n• Attiviste in prigione: 14+\n• Donne che guidano (dal 2018): 30%\n\n🤝 Organizzazioni che aiutano:\n• DAWN — www.dawnmena.org\n• Human Rights Watch — www.hrw.org\n• Amnesty International — www.amnesty.org`,
+    stats:{l:['Donne lavoro','Gap gen.pos','Rif.parz.%'],v:[33,147,30],c:'#d4600a'}},
+  'Myanmar':       {flag:'🇲🇲',sev:2,issue:'Violenza militare, tratta di donne',watson:'myanmar',
+    info:`🌍 MYANMAR\n\n📌 Problematiche principali:\nViolenza sessuale del regime militare, tratta di donne, spose bambine\n\n📖 Origine del problema:\nDal colpo di stato militare del 2021, la violenza sessuale contro le donne è usata come arma di repressione. Le donne Rohingya sono tra le più colpite.\n\n📊 Statistiche chiave:\n• Donne arrestate dopo il colpo di stato: oltre 2.000\n• Casi documentati di violenza sessuale militare: 100+\n• Donne Rohingya sfollate: 700.000+\n• Spose bambine in zone di conflitto: 36%\n\n🤝 Organizzazioni che aiutano:\n• Women's League of Burma — www.womenofburma.org\n• UNHCR Myanmar — www.unhcr.org/myanmar\n• Human Rights Watch — www.hrw.org`,
+    stats:{l:['Sfollate k','Spose <18','Arres.21 k'],v:[700,36,2],c:'#d4600a'}},
+  'Guatemala':     {flag:'🇬🇹',sev:2,issue:'Femminicidio, spose bambine indigene',watson:'guatemala',
+    info:`🌍 GUATEMALA\n\n📌 Problematiche principali:\nFemminicidio, spose bambine, violenza contro donne indigene\n\n📖 Origine del problema:\nIl Guatemala ha uno dei tassi di femminicidio più alti al mondo. La cultura machista combinata con l'impunità legale normalizza la violenza contro le donne.\n\n📊 Statistiche chiave:\n• Femminicidi all'anno: oltre 700\n• Spose sotto 18 anni: 30%\n• Donne indigene in povertà estrema: 79%\n• Impunità per femminicidio: 97%\n\n🤝 Organizzazioni che aiutano:\n• Asociación Caminos — www.asociacioncaminos.org\n• UNAMG Guatemala — www.unamg.org\n• ActionAid Guatemala — www.actionaid.org`,
+    stats:{l:['Femm.anno','Spose <18','Impunità%'],v:[700,30,97],c:'#d4600a'}},
+  'Nepal':         {flag:'🇳🇵',sev:1,issue:'Chhaupadi, tratta, spose bambine',watson:'nepal',
+    info:`🌍 NEPAL\n\n📌 Problematiche principali:\nChhaupadi (isolamento mestruale), spose bambine, tratta di esseri umani\n\n📖 Origine del problema:\nLa pratica chhaupadi bandisce le donne in capanne durante le mestruazioni causando morti per freddo. Il Nepal è uno dei principali paesi di origine della tratta di donne verso India e Medio Oriente.\n\n📊 Statistiche chiave:\n• Spose sotto 18 anni: 40%\n• Donne vittime di tratta ogni anno: 12.000-15.000\n• Donne con chhaupadi: 19% (zone rurali)\n• Mortalità materna: 186/100.000\n\n🤝 Organizzazioni che aiutano:\n• Maiti Nepal — www.maitinepal.org\n• UNICEF Nepal — www.unicef.org/nepal\n• Girls Not Brides — www.girlsnotbrides.org`,
+    stats:{l:['Spose <18','Tratte k','Mort.mat.'],v:[40,15,186],c:'#c8960c'}},
+  'Brazil':        {flag:'🇧🇷',sev:1,issue:'Femminicidio, violenza domestica',watson:'brasile',
+    info:`🌍 BRASILE\n\n📌 Problematiche principali:\nFemminicidio, violenza domestica, disuguaglianza economica\n\n📖 Origine del problema:\nIl Brasile ha radici profonde di machismo culturale. La legge Maria da Penha del 2006 tutela le donne dalla violenza domestica ma l'applicazione è ancora disomogenea.\n\n📊 Statistiche chiave:\n• Femminicidi all'anno: oltre 1.400\n• Donne vittime di violenza domestica: 1 ogni 7 minuti\n• Divario salariale uomo-donna: 26%\n• Donne in povertà estrema: 37% in più degli uomini\n\n🤝 Organizzazioni che aiutano:\n• Instituto Maria da Penha — www.institutomariadapenha.org.br\n• Themis — www.themis.org.br\n• ActionAid Brasile — www.actionaid.org.br`,
+    stats:{l:['Femm.anno','Div.sal.%','Viol.dom.k'],v:[1400,26,43],c:'#c8960c'}},
+  'Mexico':        {flag:'🇲🇽',sev:1,issue:'Femminicidio 10/giorno, sparizioni',watson:'messico',
+    info:`🌍 MESSICO\n\n📌 Problematiche principali:\nFemminicidio, sparizioni forzate, violenza legata ai cartelli\n\n📖 Origine del problema:\nIl Messico registra oltre 10 femminicidi al giorno. La violenza dei cartelli colpisce spesso le donne. Il movimento NiUnaMenos ha portato milioni di donne in piazza.\n\n📊 Statistiche chiave:\n• Femminicidi al giorno: 10+\n• Donne scomparse: oltre 20.000 casi irrisolti\n• Donne vittime di violenza domestica: 43%\n• Casi con condanna: meno del 3%\n\n🤝 Organizzazioni che aiutano:\n• Marea Verde México\n• INMUJERES — www.gob.mx/inmujeres\n• Amnesty International — www.amnesty.org`,
+    stats:{l:['Femm./gg','Scomp.k','Viol.dom.%'],v:[10,20,43],c:'#c8960c'}},
+  'Bangladesh':    {flag:'🇧🇩',sev:3,issue:'Spose bambine, acido, violenza domestica',watson:'bangladesh',
+    info:`🌍 BANGLADESH\n\n📌 Problematiche principali:\nSpose bambine, attacchi con acido, violenza domestica\n\n📖 Origine del problema:\nIl Bangladesh ha uno dei tassi più alti di matrimonio minorile al mondo. Gli attacchi con acido sono usati come forma di violenza di genere. La povertà e la mancanza di istruzione alimentano il ciclo di violenza.\n\n📊 Statistiche chiave:\n• Spose sotto 18 anni: 59%\n• Violenza domestica: 72%\n• Attacchi con acido registrati: 3.500+\n• Donne in parlamento: 21%\n\n🤝 Organizzazioni che aiutano:\n• Acid Survivors Foundation — www.acidsurvivors.org\n• BRAC Bangladesh — www.brac.net\n• Girls Not Brides — www.girlsnotbrides.org`,
+    stats:{l:['Spose <18','Viol.dom.%','Att.acido k'],v:[59,72,3.5],c:'#b52b27'}},
+  'Chad':          {flag:'🇹🇩',sev:4,issue:'MGF 44%, spose bambine 52%',watson:'ciad',
+    info:`🌍 CIAD\n\n📌 Problematiche principali:\nMGF, spose bambine, povertà estrema\n\n📖 Origine del problema:\nIl Ciad è uno dei paesi più poveri al mondo. La MGF e il matrimonio precoce sono pratiche diffuse radicate in tradizioni tribali. Il conflitto armato nel Sahel aggrava ulteriormente la situazione delle donne.\n\n📊 Statistiche chiave:\n• Donne con MGF: 44%\n• Spose sotto 18 anni: 52%\n• Mortalità materna: 1.140/100.000\n• Donne con istruzione secondaria: 8%\n\n🤝 Organizzazioni che aiutano:\n• UNICEF Ciad — www.unicef.org/chad\n• 28 Too Many — www.28toomany.org\n• CARE Ciad — www.care.org`,
+    stats:{l:['MGF','Spose <18','Mort.mat.'],v:[44,52,1140],c:'#6b0000'}},
+  'Iraq':          {flag:'🇮🇶',sev:3,issue:'Matrimoni forzati, violenza settaria',watson:'iraq',
+    info:`🌍 IRAQ\n\n📌 Problematiche principali:\nMatrimoni forzati, violenza settaria, discriminazione legale\n\n📖 Origine del problema:\nIl conflitto e l'instabilità politica hanno gravemente danneggiato i diritti delle donne irachene. Le minoranze come le donne Yazidi hanno subito genocidio e schiavitù sessuale da parte dell'ISIS.\n\n📊 Statistiche chiave:\n• Spose sotto 18 anni: 28%\n• Donne in parlamento: 26%\n• Violenza domestica: 46%\n• Donne Yazidi rapite dall'ISIS: 6.400+\n\n🤝 Organizzazioni che aiutano:\n• UNHCR Iraq — www.unhcr.org/iraq\n• Yazda — www.yazda.org\n• Human Rights Watch — www.hrw.org`,
+    stats:{l:['Spose <18','Donne parl.','Viol.dom.%'],v:[28,26,46],c:'#b52b27'}},
 };
 
-const sevConfig = {
-  4:{color:'#6b0000',label:'Situazione critica',pct:100},
-  3:{color:'#b52b27',label:'Situazione grave',pct:75},
-  2:{color:'#d4600a',label:'Situazione moderata',pct:50},
-  1:{color:'#c8960c',label:'Situazione rilevante',pct:25},
-};
-
-// ── D3 MAP ────────────────────────────────────────────────────────────
+// ── D3 MAP// ── D3 MAP ────────────────────────────────────────────────────────────
 const svg    = d3.select('#world-svg');
 const wrap   = document.getElementById('map-wrap');
 let w = wrap.clientWidth, h = wrap.clientHeight;
@@ -486,28 +523,15 @@ async function selectCountry(name, cd) {
   msgs.innerHTML = '';
   if (currentChart) { currentChart.destroy(); currentChart = null; }
 
-  addMsg(cd.flag + ' ' + name, 'user');
-  addMsg('Cerco informazioni su ' + name + '...', 'typing');
-
-  try {
-    // Use fresh session to avoid welcome message interference
-    followCtx = {}; // reset follow-up context for new country
+  // Show info directly from local data — instant, no Watson needed
+  followCtx = {}; // reset follow-up context
   currentCountryWatson = cd.watson;
-    let reply = await watsonAsk(cd.watson);
-    removeTyping();
-    if (reply && reply.trim().length > 20) {
-      addMsg(reply, 'bot');
-      speak(reply);
-    } else {
-      addMsg('Watson non ha trovato il nodo per "' + cd.watson + '".\n\nVerifica in Watson Assistant:\n• Il nodo figlio esiste con la condizione @paese:' + cd.watson + '\n• Il testo di risposta è stato salvato correttamente', 'bot');
-    }
-    showChart(name, cd.stats);
-    addQuickBtns(['Statistiche ' + name, 'Organizzazioni per ' + name, 'Come posso aiutare?']);
-  } catch(e) {
-    removeTyping();
-    addMsg('⚠️ Errore connessione Watson: ' + e.message + '\n\nVerifica che le credenziali siano corrette e che Watson Assistant sia attivo.', 'bot');
-    showChart(name, cd.stats);
-  }
+  addMsg(cd.flag + ' ' + name, 'user');
+  const localInfo = cd.info || ('Informazioni su ' + name);
+  addMsg(localInfo, 'bot');
+  speak(localInfo);
+  showChart(name, cd.stats);
+  addQuickBtns(['Statistiche ' + name, 'Organizzazioni per ' + name, 'Come posso aiutare?']);
 }
 
 function showChart(name, stats) {
